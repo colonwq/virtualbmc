@@ -10,19 +10,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import configparser
 import errno
 import multiprocessing
 import os
 import shutil
-
-import six
-from six.moves import configparser
 
 from virtualbmc import config as vbmc_config
 from virtualbmc import exception
 from virtualbmc import log
 from virtualbmc import utils
 from virtualbmc.vbmc import VirtualBMC
+
+import pprint
 
 LOG = log.get_logger()
 
@@ -39,7 +39,7 @@ class VirtualBMCManager(object):
 
     VBMC_OPTIONS = ['username', 'password', 'address', 'port',
                     'domain_name', 'libvirt_uri', 'libvirt_sasl_username',
-                    'libvirt_sasl_password', 'active']
+                    'libvirt_sasl_password', 'active', 'namespace', 'name']
 
     def __init__(self):
         super(VirtualBMCManager, self).__init__()
@@ -78,7 +78,7 @@ class VirtualBMCManager(object):
 
         for option, value in options.items():
             if value is not None:
-                config.set(DEFAULT_SECTION, option, six.text_type(value))
+                config.set(DEFAULT_SECTION, option, str(value))
 
         config_path = os.path.join(
             self.config_dir, options['domain_name'], 'config'
@@ -231,10 +231,11 @@ class VirtualBMCManager(object):
         print("namespace: ", namespace)
         print("name: ", name)
         # check libvirt's connection and if domain exist prior to adding it
-        utils.check_libvirt_connection_and_domain(
-            libvirt_uri, domain_name,
-            sasl_username=libvirt_sasl_username,
-            sasl_password=libvirt_sasl_password)
+        if CONF['default']['kubevirt'] != 'true':
+            utils.check_libvirt_connection_and_domain(
+                libvirt_uri, domain_name,
+                sasl_username=libvirt_sasl_username,
+                sasl_password=libvirt_sasl_password)
 
         domain_path = os.path.join(self.config_dir, domain_name)
 
@@ -253,7 +254,7 @@ class VirtualBMCManager(object):
             self._store_config(domain_name=domain_name,
                                username=username,
                                password=password,
-                               port=six.text_type(port),
+                               port=str(port),
                                address=address,
                                libvirt_uri=libvirt_uri,
                                libvirt_sasl_username=libvirt_sasl_username,
