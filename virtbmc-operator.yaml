@@ -1,0 +1,89 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: virtbmc-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: virtbmc-pv
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    server: 10.0.0.142
+    path: "/home/kschinck/.kube-nest"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: virtbmc-pv-claim
+  namespace: kubevirt
+spec:
+  storageClassName: virtbmc-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    kubevirt.io: virtbmc-operator
+  name: virtbmc-operator
+  namespace: kubevirt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kubevirt.io: virtbmc-operator
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly","operator":"Exists"}]'
+      labels:
+        kubevirt.io: virtbmc-operator
+        prometheus.kubevirt.io: ""
+      name: virtbmc-operator
+    spec:
+      hostNetwork: true
+      volumes:
+      - name: virtbmc-pv-storage
+        persistentVolumeClaim:
+          claimName: virtbmc-pv-claim
+      containers:
+      - command:
+        - /bin/bash
+        - /root/vbmcd.sh
+        env:
+        - name: OPERATOR_IMAGE
+          value: myreg.localhost:5000/myrepo/virtualbmc:latest
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['olm.targetNamespaces']
+        image: myreg.localhost:5000/myrepo/virtualbmc:latest
+        imagePullPolicy: Always
+        name: virtbmc-operator
+        ports:
+        - containerPort: 50891
+          name: vbmc
+          protocol: TCP
+        - containerPort: 6230
+          name: ipmi
+          protocol: UDP
+        resources: {}
+        volumeMounts:
+          - mountPath: "/kubeconfig"
+            name: virtbmc-pv-storage
+      securityContext:
+        runAsNonRoot: false
+      serviceAccountName: kubevirt-operator
