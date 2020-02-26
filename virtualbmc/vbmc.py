@@ -41,12 +41,12 @@ def get_client(kubeconfig=None):
     Returns:
         kubevirt.DefaultApi: Instance of KubeVirt client
     """
-    if kubeconfig is None:
-        kubeconfig = os.environ.get("KUBECONFIG")
-        if kubeconfig is None:
-            kubeconfig = os.path.expanduser("~/.kube/config")
-    cl = config.kube_config._get_kube_config_loader_for_yaml_file(kubeconfig)
-    cl.load_and_set(kubevirt.configuration)
+    tokenHandle = open("/var/run/secrets/kubernetes.io/serviceaccount/token", "r")
+    tokenData = tokenHandle.read()
+    kubevirt.configuration.api_key['authorization'] = tokenData
+    kubevirt.configuration.api_key_prefix['authorization'] = 'Bearer'
+    kubevirt.configuration.host = "https://kubernetes.default.svc"
+    kubevirt.configuration.ssl_ca_cert = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
     return kubevirt.DefaultApi()
 
