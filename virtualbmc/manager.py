@@ -228,8 +228,6 @@ class VirtualBMCManager(object):
             libvirt_uri, libvirt_sasl_username, libvirt_sasl_password,
             namespace, name, **kwargs):
 
-        print("namespace: ", namespace)
-        print("name: ", name)
         # check libvirt's connection and if domain exist prior to adding it
         if CONF['default']['kubevirt'] != 'true':
             utils.check_libvirt_connection_and_domain(
